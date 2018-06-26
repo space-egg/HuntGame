@@ -86,3 +86,10 @@ package-lock.json
 
 # ReactCommon subdir shouldn't have Xcode project
 /ReactCommon/**/*.xcodeproj
+=======
+node_modules/
+bower_components/
+*.log
+
+build/
+dist/
