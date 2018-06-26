@@ -2,18 +2,15 @@ import React, {Component} from 'react'
 
 import {
   Platform,
-  StyleSheet,
   Text,
   View,
   Button,
-  TextInput,
-  Dimensions
+  TextInput
 } from 'react-native'
 
-import MapView, {PROVIDER_GOOGLE} from 'react-native-maps'
 import {RTCPeerConnnection} from 'react-native-webrtc'
-
-import mapStyle from './map-style'
+import styles from './app/styles'
+import GameMap from './app/game-map'
 
 const instructions = Platform.select({
   ios: 'Press Cmd+R to reload,\n' +
@@ -22,36 +19,12 @@ const instructions = Platform.select({
     'Shake or press menu button for dev menu'
 })
 
-const {width} = Dimensions.get('window');
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    alignItems: 'center'
-  },
-  textInput: {
-    width: 200,
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5
-  },
-  map: {
-    top: 0,
-    left: 0,
-    width: width,
-    height: 400
-  }
-})
-
 export default class App extends Component {
   constructor (props) {
     super(props)
+
+    this.onPositionChange = this.onPositionChange.bind(this)
+    this.onPositionChangeErr = this.onPositionChangeErr.bind(this)
 
     this.onLogin = this.onLogin.bind(this)
     this.onConnectToPeer = this.onConnectToPeer.bind(this)
@@ -61,7 +34,15 @@ export default class App extends Component {
       username: '',
       peername: '',
       message: '',
-      peerMessage: ''
+      peerMessage: '',
+      altitudeAccuracy: -1,
+      accuracy: 5,
+      heading: -1,
+      longitude: 0,
+      latitude: 0,
+      altitude: 0,
+      speed: -1,
+      timestamp: 0
     }
 
     this.socket = new WebSocket('ws://localhost:9090')
@@ -72,6 +53,15 @@ export default class App extends Component {
     navigator.geolocation.setRNConfiguration({
       skipPermissionRequests: true
     })
+
+    navigator.geolocation.requestAuthorization()
+  }
+
+  componentDidMount () {
+    navigator.geolocation.getCurrentPosition(
+      this.onPositionChange,
+      this.onPositionChangeErr,
+      {enableHighAccuracy: true})
 
     navigator.geolocation.watchPosition(
       this.onPositionChange,
@@ -85,18 +75,21 @@ export default class App extends Component {
 
   openDataChannel () {
     this.dataChannel = this.rtcPeer.createDataChannel('channel', {reliable: true})
-
-    this.dataChannel.onerror = (err) => {
-
-    }
-
-    this.dataChannel.onmessage = () => {
-
-    }
+    this.dataChannel.onerror = (err) => { console.warn(err) }
+    this.dataChannel.onmessage = () => {}
   }
 
-  onPositionChange (data) {
-    console.log(data)
+  onPositionChange ({coords}) {
+    this.setState({
+      altitudeAccuracy: coords.altitudeAccuracy,
+      accuracy: coords.accuracy,
+      heading: coords.heading,
+      longitude: coords.longitude,
+      latitude: coords.latitude,
+      altitude: coords.altitude,
+      speed: coords.speed,
+      timestamp: coords.timestamp
+    })
   }
 
   onPositionChangeErr (data) {
@@ -150,20 +143,16 @@ export default class App extends Component {
   }
 
   render () {
-    const {username, peername, message} = this.state
+    const {
+      username, peername, message,
+      latitude, longitude
+    } = this.state
 
     return (
       <View style={styles.container}>
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: 37.78825,
-            longitude: -122.4324,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421
-          }}
-          customMapStyle={mapStyle}
-          provider={PROVIDER_GOOGLE} />
+        {latitude !== 0 && <GameMap
+          latitude={latitude}
+          longitude={longitude} />}
 
         <TextInput
           style={styles.textInput}
